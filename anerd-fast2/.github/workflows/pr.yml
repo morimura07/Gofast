@@ -1,0 +1,35 @@
+name: Pull Request
+
+on:
+  pull_request:
+  workflow_call:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-service-core:
+    name: Lint Service Core
+    uses: ./.github/workflows/lint-go.yml
+    with:
+      directory: app
+      paths: "./... ./service-core/..."
+  test-service-core:
+    name: Test Service Core
+    uses: ./.github/workflows/test-go.yml
+    with:
+      directory: app
+  lint-service-client:
+    name: Lint Service Client
+    uses: ./.github/workflows/lint-ts.yml
+    with:
+      directory: app/service-client
+  test-e2e:
+    name: E2E Tests
+    needs: [lint-service-core, test-service-core, lint-service-client]
+    uses: ./.github/workflows/test-e2e.yml
+    secrets: inherit

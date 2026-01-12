@@ -1,0 +1,70 @@
+name: Terraform Apply
+
+on:
+  workflow_call:
+    inputs:
+      core_image_tag:
+        required: true
+        type: string
+      oauth_proxy_image_tag:
+        required: true
+        type: string
+
+jobs:
+  terraform:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.release.prerelease == true && 'staging' || 'production' }}
+    timeout-minutes: 10
+    env:
+      TF_VAR_LOG_LEVEL: ${{ vars.LOG_LEVEL }}
+      TF_VAR_CORE_IMAGE_TAG: ${{ inputs.core_image_tag }}
+      TF_VAR_OAUTH_PROXY_IMAGE_TAG: ${{ inputs.oauth_proxy_image_tag }}
+      TF_VAR_DOCKER_CONFIG_JSON: ${{ secrets.DOCKER_CONFIG_JSON }}
+      TF_VAR_CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+      TF_VAR_DOMAIN: ${{ vars.DOMAIN }}
+      TF_VAR_CORE_URL: ${{ vars.CORE_URL }}
+      TF_VAR_CLIENT_URL: ${{ vars.CLIENT_URL }}
+      TF_VAR_GRAFANA_URL: ${{ vars.GRAFANA_URL }}
+      TF_VAR_DB_USER: ${{ secrets.DB_USER }}
+      TF_VAR_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      TF_VAR_DB_NAME: ${{ secrets.DB_NAME }}
+      TF_VAR_CLOUD_SQL_CONNECTION_NAME: ${{ vars.CLOUD_SQL_CONNECTION_NAME }}
+      TF_VAR_GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      TF_VAR_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      TF_VAR_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Set Kubernetes Context
+        uses: azure/k8s-set-context@v3
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Set Kubeconfig Path for Terraform
+        run: echo "TF_VAR_KUBE_CONFIG_PATH=$KUBECONFIG" >> $GITHUB_ENV
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./infra
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./infra
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: ./infra

@@ -1,0 +1,58 @@
+name: Deploy Client
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        required: false
+        type: string
+
+jobs:
+  deploy-client:
+    name: Deploy Client to Cloudflare
+    runs-on: ubuntu-latest
+    environment: ${{ (inputs.pr_number != '' && 'staging') || (github.event.release.prerelease == true && 'staging' || 'production') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app/service-client/package-lock.json
+
+      - name: Install client dependencies
+        run: npm ci
+        working-directory: app/service-client
+
+      - name: Install wrangler
+        run: npm install -g wrangler
+
+      - name: Create environment file
+        run: |
+          cd app/service-client
+          if [ "${{ inputs.pr_number }}" != "" ]; then
+            echo "PUBLIC_CORE_URL=https://pr-${{ inputs.pr_number }}-core.${{ vars.DOMAIN }}" > .env
+          else
+            echo "PUBLIC_CORE_URL=${{ vars.CORE_URL }}" > .env
+          fi
+
+      - name: Deploy to Cloudflare Workers (PR)
+        if: inputs.pr_number != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cd app/service-client
+          wrangler versions upload --preview-alias pr-${{ inputs.pr_number }}
+
+      - name: Deploy to Cloudflare Workers (Release)
+        if: inputs.pr_number == ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cd app/service-client
+          wrangler deploy

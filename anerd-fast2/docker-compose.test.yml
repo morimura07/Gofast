@@ -1,0 +1,19 @@
+services:
+  core:
+    build:
+      target: prod
+      secrets:
+        - privatekey
+        - publickey
+    volumes: !reset []
+
+  client:
+    build:
+      target: prod
+    volumes: !reset []
+
+secrets:
+  privatekey:
+    file: ./app/private.pem
+  publickey:
+    file: ./app/public.pem

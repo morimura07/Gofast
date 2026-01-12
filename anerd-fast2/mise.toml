@@ -1,0 +1,6 @@
+[tools]
+buf = "latest"
+go = "latest"
+golangci-lint = "latest"
+golangci-lint-langserver = "latest"
+node = "latest"

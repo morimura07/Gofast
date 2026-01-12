@@ -1,0 +1,77 @@
+name: PR Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed, unlabeled]
+
+jobs:
+  cleanup-preview:
+    name: Cleanup PR Preview Environment
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Check if cleanup needed
+        id: check
+        run: |
+          if [ "${{ github.event.action }}" = "closed" ]; then
+            echo "cleanup=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.action }}" = "unlabeled" ] && [ "${{ github.event.label.name }}" = "preview" ]; then
+            echo "cleanup=true" >> $GITHUB_OUTPUT
+          else
+            echo "cleanup=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup kubectl
+        if: steps.check.outputs.cleanup == 'true'
+        uses: azure/setup-kubectl@v3
+
+      - name: Set Kubernetes Context
+        if: steps.check.outputs.cleanup == 'true'
+        uses: azure/k8s-set-context@v3
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Check if namespace exists
+        if: steps.check.outputs.cleanup == 'true'
+        id: namespace-check
+        run: |
+          if kubectl get namespace pr-${{ github.event.pull_request.number }} 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Delete PR namespace
+        if: steps.check.outputs.cleanup == 'true' && steps.namespace-check.outputs.exists == 'true'
+        run: |
+          echo "Deleting namespace pr-${{ github.event.pull_request.number }}..."
+          kubectl delete namespace pr-${{ github.event.pull_request.number }} --timeout=120s
+          echo "Namespace deleted successfully"
+
+      - name: Comment Cleanup Confirmation
+        if: steps.check.outputs.cleanup == 'true' && steps.namespace-check.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+
+            const comment = `## 🧹 Preview Environment Cleaned Up
+
+            The preview environment for PR #${prNumber} has been deleted.
+
+            Removed resources:
+            - Kubernetes namespace: pr-${prNumber}
+            - All pods, services, and PVCs in the namespace
+
+            Note: The Cloudflare Worker version alias will remain but does not consume significant resources.`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment
+            });

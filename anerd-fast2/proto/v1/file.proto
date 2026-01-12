@@ -1,0 +1,14 @@
+syntax = "proto3";
+option go_package = "gofast/gen/proto/v1";
+package proto.v1;
+
+message File {
+    string id = 1;
+    string created = 2;
+    string updated = 3;
+
+    string file_key = 4;
+    string file_name = 5;
+    int64 file_size = 6;
+    string content_type = 7;
+}

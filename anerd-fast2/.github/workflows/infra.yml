@@ -1,0 +1,50 @@
+name: Infra Deploy
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  get-images:
+    name: Get Current Image Tags
+    if: startsWith(github.ref, 'refs/tags/infra-')
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.release.prerelease == true && 'staging' || 'production' }}
+    outputs:
+      core_image_tag: ${{ steps.core_image.outputs.image_tag }}
+    steps:
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Set Kubernetes Context
+        uses: azure/k8s-set-context@v3
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Get Core Image Tag
+        id: core_image
+        run: |
+          tag=$(kubectl get deployment service-core -o jsonpath='{.spec.template.spec.containers[0].image}')
+          echo "image_tag=$tag" >> $GITHUB_OUTPUT
+
+      - name: Get Ouath Proxy Image Tag
+        id: oauth_image
+        run: |
+          tag=$(kubectl get deployment oauth-proxy -o jsonpath='{.spec.template.spec.containers[0].image}')
+          echo "image_tag=$tag" >> $GITHUB_OUTPUT
+
+  terraform:
+    name: Terraform Apply for Infra Release
+    if: startsWith(github.ref, 'refs/tags/infra-')
+    needs: get-images
+    uses: ./.github/workflows/terraform.yml
+    permissions:
+      contents: read
+    secrets: inherit
+    with:
+      core_image_tag: ${{ needs.get-images.outputs.core_image_tag }}
+      oauth_proxy_image_tag: ${{ needs.get-images.outputs.oauth_image_tag }}

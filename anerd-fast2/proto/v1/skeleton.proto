@@ -1,0 +1,14 @@
+syntax = "proto3";
+option go_package = "gofast/gen/proto/v1";
+package proto.v1;
+
+message Skeleton {
+    string id = 1;
+    string created = 2;
+    string updated = 3;
+
+    string name = 4;
+    string age = 5;
+    string death = 6;
+    bool zombie = 7;
+}

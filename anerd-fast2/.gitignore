@@ -1,0 +1,8 @@
+tmp
+*.pem
+node_modules
+.svelte-kit
+coverage*
+playwright-report
+test-results
+.env

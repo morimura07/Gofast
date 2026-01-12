@@ -1,0 +1,96 @@
+services:
+
+  core:
+    container_name: anerd-fast2-core
+    build:
+      context: ./app
+      dockerfile: ./service-core/Dockerfile
+      target: dev
+    volumes:
+      - ./app/service-core:/app/service-core
+      - ./app/pkg:/app/pkg
+      - ./app/gen:/app/gen
+    ports:
+      - 4000:4000
+    environment:
+      PORT: 4000
+      LOG_LEVEL: debug
+      SERVICE_NAME: service-core
+      DOMAIN: localhost
+      CORE_URL: http://localhost:4000
+      CLIENT_URL: http://localhost:3000
+      CRON_TOKEN: 1234
+      DEV_USER_ID: ${DEV_USER_ID:-}
+      # Database
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Auth (localhost-scoped OAuth apps)
+      OAUTH_REDIRECT_URI: ${OAUTH_REDIRECT_URI:-http://localhost:8080/callback}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-646089287190-m252eqv203c3fsv1gt1m29nkq2t6lrp6.apps.googleusercontent.com}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-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}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      FACEBOOK_CLIENT_ID: ${FACEBOOK_CLIENT_ID:-}
+      FACEBOOK_CLIENT_SECRET: ${FACEBOOK_CLIENT_SECRET:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      # Payments
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_ID_BASIC: ${STRIPE_PRICE_ID_BASIC:-}
+      STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
+      # Files
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY:-}
+      R2_SECRET_KEY: ${R2_SECRET_KEY:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
+      BUCKET_NAME: ${BUCKET_NAME:-}
+      # Emails
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      oauth-proxy:
+        condition: service_healthy
+
+  oauth-proxy:
+    container_name: anerd-fast2-oauth-proxy
+    build:
+      context: ./app/service-oauth-proxy
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - 8080:8080
+    environment:
+      PORT: 8080
+      DOMAIN: localhost
+      CORE_URL: http://localhost:4000
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    container_name: anerd-fast2-postgres
+    image: postgres:18
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5

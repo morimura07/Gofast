@@ -1,0 +1,22 @@
+syntax = "proto3";
+option go_package = "gofast/gen/proto/v1";
+package proto.v1;
+
+message EmailAttachment {
+    string id = 1;
+    string created = 2;
+    string email_id = 3;
+    string file_name = 4;
+    string content_type = 5;
+}
+
+message Email {
+    string id = 1;
+    string created = 2;
+    string updated = 3;
+    string email_to = 4;
+    string email_from = 5;
+    string email_subject = 6;
+    string email_body = 7;
+    repeated EmailAttachment attachments = 8;
+}

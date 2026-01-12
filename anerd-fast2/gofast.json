@@ -1,0 +1,38 @@
+{
+  "project_name": "anerd-fast2",
+  "services": [
+    {
+      "name": "core",
+      "port": "4000"
+    },
+    {
+      "name": "svelte",
+      "port": "3000"
+    }
+  ],
+  "models": [
+    {
+      "name": "skeleton",
+      "columns": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "age",
+          "type": "number"
+        },
+        {
+          "name": "death",
+          "type": "time"
+        },
+        {
+          "name": "zombie",
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "integrations": [],
+  "infra_populated": false
+}

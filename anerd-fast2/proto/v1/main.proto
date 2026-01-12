@@ -1,0 +1,146 @@
+syntax = "proto3";
+option go_package = "gofast/gen/proto/v1";
+package proto.v1;
+
+import "proto/v1/user.proto";
+import "proto/v1/skeleton.proto";
+import "proto/v1/file.proto";
+import "proto/v1/email.proto";
+
+message Empty {}
+
+// --- Login Service ---
+
+message LoginRequest {
+    string provider = 1;
+    string return_url = 2;
+}
+message LoginResponse {
+    string url = 1;
+}
+
+message LogoutRequest {}
+message LogoutResponse {}
+
+message RefreshRequest {}
+message RefreshResponse {
+    string email = 1;
+    int64 access = 2;
+}
+
+service LoginService {
+    rpc LoginURL(LoginRequest) returns (LoginResponse) {}
+    rpc Logout(LogoutRequest) returns (LogoutResponse) {}
+    rpc Refresh(RefreshRequest) returns (RefreshResponse) {}
+}
+
+// --- Skeleton Service ---
+
+message GetAllSkeletonsRequest {}
+message GetAllSkeletonsResponse {
+    Skeleton skeleton = 1;
+}
+
+message GetSkeletonByIDRequest {
+    string id = 1;
+}
+message GetSkeletonByIDResponse {
+    Skeleton skeleton = 1;
+}
+
+message CreateSkeletonRequest {
+    Skeleton skeleton = 1;
+}
+message CreateSkeletonResponse {
+    Skeleton skeleton = 1;
+}
+
+message EditSkeletonRequest {
+    Skeleton skeleton = 1;
+}
+message EditSkeletonResponse {
+    Skeleton skeleton = 1;
+}
+
+message RemoveSkeletonRequest {
+    string id = 1;
+}
+message RemoveSkeletonResponse {}
+
+service SkeletonService {
+    rpc GetAllSkeletons(GetAllSkeletonsRequest) returns (stream GetAllSkeletonsResponse) {}
+    rpc GetSkeletonByID(GetSkeletonByIDRequest) returns (GetSkeletonByIDResponse) {}
+    rpc CreateSkeleton(CreateSkeletonRequest) returns (CreateSkeletonResponse) {}
+    rpc EditSkeleton(EditSkeletonRequest) returns (EditSkeletonResponse) {}
+    rpc RemoveSkeleton(RemoveSkeletonRequest) returns (RemoveSkeletonResponse) {}
+}
+
+// --- Payment Service ---
+
+message CreateCheckoutSessionRequest {
+    string plan = 1;
+    string success_url = 2;
+    string cancel_url = 3;
+}
+message CreateCheckoutSessionResponse {
+    string url = 1;
+}
+
+message CreatePortalSessionRequest {
+    string return_url = 1;
+}
+message CreatePortalSessionResponse {
+    string url = 1;
+}
+
+service PaymentService {
+    rpc CreateCheckoutSession(CreateCheckoutSessionRequest) returns (CreateCheckoutSessionResponse) {}
+    rpc CreatePortalSession(CreatePortalSessionRequest) returns (CreatePortalSessionResponse) {}
+}
+
+// --- File Service ---
+
+message GetFilesRequest {}
+message GetFilesResponse {
+    repeated File files = 1;
+}
+
+message DownloadFileRequest {
+    string id = 1;
+}
+message DownloadFileResponse {
+    File file = 1;
+    bytes data = 2;
+}
+
+message RemoveFileRequest {
+    string id = 1;
+}
+message RemoveFileResponse {}
+
+service FileService {
+    rpc GetFiles(GetFilesRequest) returns (GetFilesResponse) {}
+    rpc DownloadFile(DownloadFileRequest) returns (DownloadFileResponse) {}
+    rpc RemoveFile(RemoveFileRequest) returns (RemoveFileResponse) {}
+}
+
+// --- Email Service ---
+
+message GetEmailsRequest {}
+message GetEmailsResponse {
+    repeated Email emails = 1;
+}
+
+message SendEmailRequest {
+    string email_to = 1;
+    string email_subject = 2;
+    string email_body = 3;
+}
+message SendEmailResponse {
+    Email email = 1;
+}
+
+service EmailService {
+    rpc GetEmails(GetEmailsRequest) returns (GetEmailsResponse) {}
+    rpc SendEmail(SendEmailRequest) returns (SendEmailResponse) {}
+}

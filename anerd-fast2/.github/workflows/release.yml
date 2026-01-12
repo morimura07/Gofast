@@ -1,0 +1,79 @@
+name: Deploy
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    if: "!startsWith(github.ref, 'refs/tags/infra-')"
+    uses: ./.github/workflows/pr.yml
+
+  migration:
+    name: Run Database Migrations
+    if: "!startsWith(github.ref, 'refs/tags/infra-')"
+    uses: ./.github/workflows/migration.yml
+    with:
+      directory: app/service-core/storage
+    secrets: inherit
+    needs:
+      - lint-and-test
+
+  build-service-core:
+    name: Build Service Core Image
+    if: "!startsWith(github.ref, 'refs/tags/infra-')"
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+    needs:
+      - migration
+    with:
+      registry: ghcr.io
+      image_name: service-core
+      context: app
+      dockerfile: app/service-core/Dockerfile
+
+  build-oauth-proxy:
+    name: Build OAuth Proxy Image
+    if: "!startsWith(github.ref, 'refs/tags/infra-')"
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      registry: ghcr.io
+      image_name: oauth-proxy
+      context: app/service-oauth-proxy
+      dockerfile: app/service-oauth-proxy/Dockerfile
+    secrets: inherit
+    needs:
+      - lint-and-test
+
+  deploy-client:
+    name: Deploy Client
+    if: "!startsWith(github.ref, 'refs/tags/infra-')"
+    uses: ./.github/workflows/deploy-client.yml
+    secrets: inherit
+    needs:
+      - lint-and-test
+
+  terraform:
+    name: Terraform Apply
+    if: "!startsWith(github.ref, 'refs/tags/infra-')"
+    uses: ./.github/workflows/terraform.yml
+    permissions:
+      contents: read
+    secrets: inherit
+    needs:
+      - build-service-core
+      - build-oauth-proxy
+    with:
+      core_image_tag: ${{ needs.build-service-core.outputs.image_tag }}
+      oauth_proxy_image_tag: ${{ needs.build-oauth-proxy.outputs.image_tag }}

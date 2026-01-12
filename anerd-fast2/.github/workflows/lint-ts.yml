@@ -1,0 +1,24 @@
+name: Lint TS
+
+on:
+  workflow_call:
+    inputs:
+      directory:
+        required: true
+        type: string
+
+jobs:
+  lint-ts:
+    name: Lint TS Code
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.directory }}
+    env:
+      PUBLIC_CORE_URL: "http://localhost:4000"
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm i
+      - run: npm run lint
+      - run: npm run check
+      - run: npm run build
